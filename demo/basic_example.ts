@@ -1,3 +1,4 @@
+import { createBarUI } from "./components/Bar";
 import "./style.css";
 
 interface Action<TContext> {
@@ -24,18 +25,25 @@ class UtilityAI<TContext> {
     this.#actions.push(action);
   }
 
+  removeAction(actionName: string): void { 
+    this.#actions = this.#actions.filter(action => action.name !== actionName);
+  }
+
   selectBestAction(agent: Agent<TContext>): Action<TContext> | null {
     let bestAction: Action<TContext> | null = null;
     let highestUtility = -Infinity;
 
+    console.table(agent.context)
     for (const action of this.#actions) {
       const utility = action.calculateUtility(agent.context);
+      console.log(`${action.name} has utility of ${utility}`)
       if (utility > highestUtility) {
         bestAction = action;
         highestUtility = utility;
       }
     }
 
+    console.log(`${bestAction?.name} chosen with highest utility of ${highestUtility}`)
     return bestAction
   }
 
@@ -119,7 +127,7 @@ class FleeAction implements Action<ExampleContext> {
   }
 
   calculateUtility(context: ExampleContext): number {
-    return context.threatsNearby * 0.7 + (100 - context.energy) * 0.3;
+    return context.threatsNearby * 0.8 + (100 - context.energy) * 0.3;
   }
 }
 
@@ -145,31 +153,27 @@ const agent: Agent<ExampleContext> = {
   }
 }
 
-const updateUI = (agent: Agent<ExampleContext>) => {
+const updateActionUI = (agent: Agent<ExampleContext>) => {
   const action = document.querySelector("#action");
-  const hunger = document.querySelector("#hunger");
-  const thirst = document.querySelector("#thirst");
-  const energy = document.querySelector("#energy");
-  const distanceToFood = document.querySelector("#distanceToFood");
-  const distanceToWater = document.querySelector("#distanceToWater");
-  const distanceToBed = document.querySelector("#distanceToBed");
-  const threats = document.querySelector("#threats");
   action!.innerHTML = agent.currentAction || "none";
-  hunger!.innerHTML = `Hunger: ${agent.context.hunger}`;
-  thirst!.innerHTML = `Thirst: ${agent.context.thirst}`;
-  energy!.innerHTML = `Energy: ${agent.context.energy}`;
-  distanceToFood!.innerHTML = `Distance To Food: ${agent.context.distanceToFood}`;
-  distanceToWater!.innerHTML = `Distance To Water: ${agent.context.distanceToWater}`;
-  distanceToBed!.innerHTML = `Distance To Bed: ${agent.context.distanceToBed}`;
-  threats!.innerHTML = `Threats: ${agent.context.threatsNearby}`;
 }
 
-updateUI(agent);
-const button = document.querySelector("#button");
-button?.addEventListener("click", () => {
-  ai.update(agent);
+const updateContextBtn = document.querySelector("#update-context");
+updateContextBtn?.addEventListener("click", () => {
   updateContext(agent.context);
-  updateUI(agent);
+})
+
+const evaluateActionBtn = document.querySelector("#evaluate-action");
+evaluateActionBtn?.addEventListener("click", () => {
+  ai.update(agent);
+  updateActionUI(agent);
+})
+
+const updates: Partial<Record<string, (value: number) => void>> = {};
+
+Object.keys(agent.context).forEach(key => {
+  const bar = createBarUI("stats", key, agent.context[key], (value: number) => agent.context[key] = value);
+  if (bar) updates[key] = bar.update; 
 })
 
 function updateContext(context: ExampleContext): void {
@@ -183,16 +187,6 @@ function updateContext(context: ExampleContext): void {
 
   Object.keys(context).forEach(key => {
     context[key as keyof ExampleContext] = parseFloat(Math.max(0, Math.min(100, context[key as keyof ExampleContext])).toFixed(2));
+    updates[key]?.(context[key]);
   })
 }
-
-/*
-for (let i = 0; i < 10; i++) {
-  console.log(`iteration ${i + 1}`)
-  console.log(`context: ${agent.context}`)
-  ai.update(agent);
-  console.log(`Agent's current action: ${agent.currentAction}`);
-  updateContext(agent.context);
-  updateUI(agent);
-}
-  */

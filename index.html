@@ -4,26 +4,22 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <title>Utility AI</title>
   </head>
   <body>
     <h1>UTILITY AI TESTING GROUNDS</h1>
-    <div id="app"></div>
-    <script type="module" src="/src/basic_example.ts"></script>
+    <script type="module" src="/demo/basic_example.ts"></script>
 
     <div id="agent">
       <h4>Current Action</h4>
-      <span id="action"></span>
+      <span id="action">No Action</span>
       <h4>Context</h4>
-      <span id="hunger"></span>
-      <span id="thirst"></span>
-      <span id="energy"></span>
-      <span id="distanceToFood"></span>
-      <span id="distanceToWater"></span>
-      <span id="distanceToBed"></span>
-      <span id="threats"></span>
+      <div id="stats"></div>
     </div>
 
-    <button id="button">Update</button>
+    <div class="actions">
+      <button id="update-context">Update Context</button>
+      <button id="evaluate-action">Evaluate Action</button>
+    </div>
   </body>
 </html>

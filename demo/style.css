@@ -19,8 +19,37 @@
   margin-bottom: 15px;
 }
 
-#agent span {
-  display: block;
+#stats { 
+  max-width: 1000px;
+  margin: 0 auto;
+}
+
+#stats .bar {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  margin-bottom: 15px;
+}
+
+#stats .bar .stat {
+  width: 200px;
+  display: flex;
+  justify-content: space-between;
+  padding: 5px 10px;
+}
+
+#stats .bar .stat span {
+  width: 50px;
+}
+
+#stats .bar .stat input {
+  width: 100%;
+  border: none;
+  outline: none;
+}
+
+#stats .bar button {
+  width: 85px;
 }
 
 a {
