@@ -160,13 +160,15 @@ const updateActionUI = (agent: Agent<ExampleContext>) => {
 
 const updateContextBtn = document.querySelector("#update-context");
 updateContextBtn?.addEventListener("click", () => {
-  updateContext(agent.context);
+  modifyContext(agent.context);
+  renderContext(agent.context);
 })
 
 const evaluateActionBtn = document.querySelector("#evaluate-action");
 evaluateActionBtn?.addEventListener("click", () => {
   ai.update(agent);
   updateActionUI(agent);
+  renderContext(agent.context)
 })
 
 const updates: Partial<Record<string, (value: number) => void>> = {};
@@ -176,7 +178,7 @@ Object.keys(agent.context).forEach(key => {
   if (bar) updates[key] = bar.update; 
 })
 
-function updateContext(context: ExampleContext): void {
+function modifyContext(context: ExampleContext): void {
   context.hunger += Math.random() * 5;
   context.thirst += Math.random() * 5;
   context.energy -= Math.random() * 5;
@@ -184,7 +186,9 @@ function updateContext(context: ExampleContext): void {
   context.distanceToWater += (Math.random() - 0.5) * 10;
   context.distanceToBed += (Math.random() - 0.5) * 10;
   context.threatsNearby+= (Math.random() - 0.5) * 5;
+}
 
+function renderContext(context: ExampleContext): void {
   Object.keys(context).forEach(key => {
     context[key as keyof ExampleContext] = parseFloat(Math.max(0, Math.min(100, context[key as keyof ExampleContext])).toFixed(2));
     updates[key]?.(context[key]);
