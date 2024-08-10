@@ -1,12 +1,12 @@
 import './style.css'
 
 /** UTILITY AI */
-class UtilityAI<TContext, TPersonality> {
+class UtilityAI<TContext> {
   updatePeriod: number;
 
-  #rootReasoner: Reasoner<TContext, TPersonality>;
+  #rootReasoner: Reasoner<TContext>;
 
-  constructor(context: TContext, reasoner: Reasoner<TContext, TPersonality>, updatePeriod = 1) {
+  constructor(context: TContext, reasoner: Reasoner<TContext>, updatePeriod = 1) {
     this.updatePeriod = updatePeriod;
     this.#rootReasoner = reasoner;
   }
@@ -18,10 +18,9 @@ class UtilityAI<TContext, TPersonality> {
  * * * first score
  * * * highest score
  */ 
-interface Reasoner<TContext, TPersonality> {
-  considerations: Consideration<TContext, TPersonality>[],
-  selectBestConsideration: (context: TContext) => Consideration<TContext, TPersonality> | null;
-
+interface Reasoner<TContext> {
+  considerations: Consideration<TContext>[],
+  selectBestConsideration: (context: TContext) => Consideration<TContext> | null;
 }
 
 /**
@@ -29,31 +28,56 @@ interface Reasoner<TContext, TPersonality> {
  * * contains a list of APPRAISALS and ACTIONS
  * * calculates the score which represents numerically the utility of its ACTION
  */ 
-interface Consideration<TContext, TPersonality> {
+interface Consideration<TContext> {
   // score: number;
-  getScore: (context: TContext, personality: TPersonality) => number;
+  getScore: (context: TContext) => number;
   action?: Action<TContext>;
-  appraisals?: Appraisal<TContext, TPersonality>[];
+  appraisals?: Appraisal<TContext>[];
+}
+
+/**
+ * Score appraisals by accumulating their scores
+ */
+class AveragedConsideration<TContext> implements Consideration<TContext> {
+  action?: Action<TContext>;
+  appraisals?: Appraisal<TContext>[];
+
+  constructor(action: Action<TContext>, appraisals: Appraisal<TContext>[]) {
+    this.action = action;
+    this.appraisals = appraisals;
+  }
+
+  getScore(context: TContext) {
+    if (!this.appraisals || this.appraisals?.length === 0) return 0;
+
+    let totalScore = 0;
+    this.appraisals?.forEach(appraisal => {
+      const score = appraisal.getScore(context);
+      totalScore += score;
+    })
+
+    return totalScore / this.appraisals.length;
+  }
 }
 
 /**
  * Score child appraisals until child scores below threshold
  */
-class ThresholdConsideration<TContext, TPersonality> implements Consideration<TContext, TPersonality> {
+class ThresholdConsideration<TContext, TPersonality> implements Consideration<TContext> {
   threshold: number;
   action?: Action<TContext>;
-  appraisals?: Appraisal<TContext, TPersonality>[] | undefined;
+  appraisals?: Appraisal<TContext>[];
 
-  constructor(threshold: number, action: Action<TContext>, appraisals: Appraisal<TContext, TPersonality>[]) {
+  constructor(threshold: number, action: Action<TContext>, appraisals: Appraisal<TContext>[]) {
     this.action = action;
     this.appraisals = appraisals;
     this.threshold = threshold;
   }
 
-  getScore = (context: TContext, personality: TPersonality) => {
+  getScore = (context: TContext) => {
     let sum = 0;
     this.appraisals?.forEach(appraisal => {
-      const score = appraisal.getScore(context, personality);
+      const score = appraisal.getScore(context);
 
       if (score < this.threshold) return sum;
 
@@ -69,9 +93,9 @@ class ThresholdConsideration<TContext, TPersonality> implements Consideration<TC
  * * the calculated Utility
  * * * https://www.desmos.com/calculator
  */
-interface Appraisal<TContext, TPersonality> {
+interface Appraisal<TContext> {
   weight: number
-  getScore: (context: TContext, personality: TPersonality) => number;
+  getScore: (context: TContext) => number;
 }
 
 /**
