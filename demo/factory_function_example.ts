@@ -1,44 +1,44 @@
-// Types and interfaces
 enum ActionName {
   Idle,
   Attack,
   Flee
 }
 
-interface Action {
-  name: ActionName;
+export interface Action {
+  name: string | number;
   parameters?: Record<string, any>;
 }
 
-type Context = Record<string, any>;
+export type Context = Record<string, any>;
 
 // we may want to have additional (and optional) appraisal params
-type AppraisalFunction = (context: Context) => number;
+export type AppraisalFunction = (context: Context) => number;
 
-type ScoringFunction = (scores: number[]) => number;
+export type ScoringFunction = (scores: number[]) => number;
 
-type CurveFunction = (score: number) => number;
+export type CurveFunction = (score: number) => number;
 
-interface Appraisal {
+export interface Appraisal {
   evaluate: AppraisalFunction;
   computeCurve?: CurveFunction
 }
 
-interface Consideration {
+export interface Consideration {
   action: Action;
+  bonusFactor: number;
   weight: number;
   appraisals: Appraisal[];
   scoringMethod: ScoringFunction;
   parameters?: Record<string, any>;
 }
 
-interface Reasoner {
+export interface Reasoner {
   considerations: Consideration[];
   evaluate: (context: Context) => Action;
 }
 
 // Helper functions
-const createAppraisal = (
+export const createAppraisal = (
   fn: AppraisalFunction,
   computeCurve?: CurveFunction,
 ): Appraisal => ({
@@ -46,58 +46,72 @@ const createAppraisal = (
   computeCurve: computeCurve || quadraticCurve,
 });
 
-const createConsideration = (
+export const createConsideration = (
   action: Action,
   appraisals: Appraisal[],
   scoringMethod: ScoringFunction,
+  bonusFactor?: number,
   weight?: number,
   parameters?: Record<string, any>,
 ): Consideration => ({
   action,
   appraisals,
   scoringMethod,
+  bonusFactor: bonusFactor || 1,
   weight: weight || 1,
   parameters,
 });
 
-const createReasoner = (considerations: Consideration[]): Reasoner => ({
-  considerations,
-  evaluate: (context: Context) => {
-    let bestScore = -Infinity;
-    let bestAction: Action | null = null;
+export const createReasoner = (considerations: Consideration[]): Reasoner => {
+  return {
+    considerations,
+    evaluate: (context: Context) => {
+      let bestScore = -Infinity;
+      let bestAction: Action | null = null;
 
-    for (const consideration of considerations) {
-      if (consideration.weight <= 0) continue;
+      for (const consideration of considerations) {
+        if (consideration.weight <= 0) continue;
 
-      const scores = [] as number[];
+        const scores = [] as number[];
 
-      for (const appraisal of consideration.appraisals) {
-        const score = appraisal.evaluate(context);
-        if (score === 0) continue;
-        scores.push(score);
+        for (const appraisal of consideration.appraisals) {
+          const score = appraisal.evaluate(context);
+          if (score === 0) continue;
+          scores.push(score);
+        }
+
+        const score = consideration.scoringMethod(scores) * consideration.weight;
+        if (score > bestScore) {
+          bestScore = score;
+          bestAction = consideration.action;
+        }
       }
 
-      const score = consideration.scoringMethod(scores) * consideration.weight;
-      if (score > bestScore) {
-        bestScore = score;
-        bestAction = consideration.action;
-      }
-    }
+      return bestAction || { name: ActionName.Idle };
+    },
+  }
+};
 
-    return bestAction || { name: ActionName.Idle };
-  },
-});
+/*
+const ScoreAllConsiderations = (considerations: Consideration[], context: Context) => {
+  let cutoff = 0;
+  for (const consideration of considerations) {
+    const bonus = consideration.bonusFactor;
+    if (bonus < cutoff) continue;
+  }
+}
+*/
 
 // Example scoring methods
-const averageScoring: ScoringFunction = (scores) => 
+export const averageScoring: ScoringFunction = (scores) => 
   scores.reduce((sum, score) => sum + score, 0) / scores.length;
 
-const multiplicativeScoring: ScoringFunction = (scores) => 
+export const multiplicativeScoring: ScoringFunction = (scores) => 
   scores.reduce((product, score) => product * score, 1);
 
 // Example curve functions
-const linearCurve: CurveFunction = (score) => score;
-const quadraticCurve: CurveFunction = (score) => score * score;
+export const linearCurve: CurveFunction = (score) => score;
+export const quadraticCurve: CurveFunction = (score) => score * score;
 
 // Example usage
 const exampleContext: Context = {
