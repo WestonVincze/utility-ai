@@ -62,20 +62,26 @@ export const createConsideration = (
   parameters,
 });
 
-export const createReasoner = (considerations: Consideration[]): Reasoner => {
+export const createReasoner = (baseConsiderations: Consideration[]): Reasoner => {
   return {
-    considerations,
-    evaluate: (context: Context) => {
+    considerations: baseConsiderations,
+    evaluate: (context: Context, dynamicConsiderations: Consideration[] = []) => {
       let bestScore = -Infinity;
       let bestAction: Action | null = null;
 
-      for (const consideration of considerations) {
+      for (const consideration of [
+        ...baseConsiderations,
+        ...dynamicConsiderations
+      ]) {
         if (consideration.weight <= 0) continue;
 
         const scores = [] as number[];
 
         for (const appraisal of consideration.appraisals) {
-          const score = appraisal.evaluate(context);
+          const score = appraisal.evaluate({
+            ...context,
+            ...consideration.parameters
+          });
           if (score === 0) continue;
           scores.push(score);
         }
@@ -112,24 +118,4 @@ export const multiplicativeScoring: ScoringFunction = (scores) =>
 // Example curve functions
 export const linearCurve: CurveFunction = (score) => score;
 export const quadraticCurve: CurveFunction = (score) => score * score;
-
-// Example usage
-const exampleContext: Context = {
-  health: 0.5,
-  enemyDistance: 10,
-  ammo: 20,
-};
-
-const healthAppraisal = createAppraisal((context) => 1 - context.health, quadraticCurve);
-const distanceAppraisal = createAppraisal((context) => 1 / (1 + context.enemyDistance));
-
-const attackConsideration = createConsideration(
-  { name: ActionName.Attack, parameters: { targetId: 1 } },
-  [healthAppraisal, distanceAppraisal],
-  averageScoring,
-);
-
-const reasoner = createReasoner([attackConsideration]);
-const result = reasoner.evaluate(exampleContext);
-
-console.log(result); // { name: "attack", parameters: { targetId: 1 } }
+export const inverseQuadraticCurve: CurveFunction = (score) => 1 - score * score;
