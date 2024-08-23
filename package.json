@@ -1,7 +1,6 @@
 {
-  "name": "utility-ai",
-  "private": true,
-  "version": "0.0.0",
+  "name": "utilitai",
+  "version": "0.0.1",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -11,5 +10,32 @@
   "devDependencies": {
     "typescript": "^5.2.2",
     "vite": "^5.3.4"
-  }
+  },
+  "description": "Utility AI library",
+  "main": "src/main.ts",
+  "directories": {
+    "doc": "docs"
+  },
+  "dependencies": {
+    "esbuild": "^0.21.5",
+    "nanoid": "^3.3.7",
+    "picocolors": "^1.0.1",
+    "postcss": "^8.4.41",
+    "rollup": "^4.20.0",
+    "source-map-js": "^1.2.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/WestonVincze/utility-ai.git"
+  },
+  "keywords": [
+    "utility",
+    "ai"
+  ],
+  "author": "Weston Vincze",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/WestonVincze/utility-ai/issues"
+  },
+  "homepage": "https://github.com/WestonVincze/utility-ai#readme"
 }
