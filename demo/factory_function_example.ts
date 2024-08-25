@@ -1,3 +1,5 @@
+import type { AppraisalFunction, CurveFunction, Appraisal, Action, ScoringFunction, Consideration, Reasoner, Context } from "../src/types";
+
 enum ActionName {
   Idle,
   Attack,
