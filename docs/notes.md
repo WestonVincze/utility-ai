@@ -1,3 +1,7 @@
+# NOTES
+
+A collection of notes taken while learning about Utility theory for Game AI
+
 ## Resources
 http://www.gameaipro.com/GameAIPro/GameAIPro_Chapter09_An_Introduction_to_Utility_Theory.pdf
 https://www.gdcvault.com/play/1012410/Improving-AI-Decision-Modeling-Through
