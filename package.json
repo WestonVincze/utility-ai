@@ -1,20 +1,22 @@
 {
   "name": "utilitai",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "tsc",
+    "preview": "vite preview",
+    "test": "npx vitest"
   },
   "devDependencies": {
     "eslint": "^9.9.1",
     "prettier": "^3.3.3",
     "prettier-eslint": "^16.3.0",
     "typescript": "^5.2.2",
-    "vite": "^5.3.4"
+    "vite": "^5.3.4",
+    "vitest": "^3.1.4"
   },
-  "description": "Utility AI library",
+  "description": "Utility AI library built with TypeScript",
   "main": "src/main.ts",
   "directories": {
     "doc": "docs"
@@ -33,10 +35,17 @@
   },
   "keywords": [
     "utility",
-    "ai"
+    "ai",
+    "utility-ai",
+    "utilitai",
+    "reasoner",
+    "appraisal",
+    "consideration",
+    "decision-making",
+    "typescript"
   ],
   "author": "Weston Vincze",
-  "license": "ISC",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/WestonVincze/utility-ai/issues"
   },

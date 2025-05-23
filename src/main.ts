@@ -1,190 +1,145 @@
-import './style.css'
+export type IContext = Record<string, any>;
 
-/** UTILITY AI */
-class UtilityAI<TContext> {
-  updatePeriod: number;
+export type ScoringFunction = (score: number[]) => number;
 
-  #rootReasoner: Reasoner<TContext>;
+export type CurveFunction = (score: number) => number;
 
-  constructor(context: TContext, reasoner: Reasoner<TContext>, updatePeriod = 1) {
-    this.updatePeriod = updatePeriod;
-    this.#rootReasoner = reasoner;
-  }
+export interface IConsideration<TContext, TParams = undefined> {
+  evaluate: (context: TContext, params?: TParams) => number;
+  curveFunction?: CurveFunction;
+} 
+
+export interface IAppraisal<TContext> {
+  id: string;
+  action: { type: string; params?: Record<string, any> };
+  considerations: {
+    consideration: IConsideration<TContext, any>,
+    params?: any
+  }[],
+  weight?: number;
+  scoringFunction?: ScoringFunction;
 }
 
 /**
- * REASONERS - TOP LEVEL "ACTION"
- * * select CONSIDERATION from a list of CONSIDERATIONS
- * * * first score
- * * * highest score
- */ 
-interface Reasoner<TContext> {
-  considerations: Consideration<TContext>[],
-  selectBestConsideration: (context: TContext) => Consideration<TContext> | null;
-}
-
-/**
- * CONSIDERATIONS - SUB 
- * * contains a list of APPRAISALS and ACTIONS
- * * calculates the score which represents numerically the utility of its ACTION
- */ 
-interface Consideration<TContext> {
-  // score: number;
-  getScore: (context: TContext) => number;
-  action?: Action<TContext>;
-  appraisals?: Appraisal<TContext>[];
-}
-
-/**
- * Score appraisals by accumulating their scores
+ * Reasoner is the main brain of the Utility AI process
  */
-class AveragedConsideration<TContext> implements Consideration<TContext> {
-  action?: Action<TContext>;
-  appraisals?: Appraisal<TContext>[];
+export class Reasoner<TContext extends IContext> {
+  private appraisals: IAppraisal<TContext>[] = [];
+  private lastAction: { type: string; parameters?: Record<string, any> } | null = null;
+  private decisionLock: { isLocked: boolean; unlockTime: number } = { isLocked: false, unlockTime: 0 };
 
-  constructor(action: Action<TContext>, appraisals: Appraisal<TContext>[]) {
-    this.action = action;
-    this.appraisals = appraisals;
+  private defaultScoringFunction: ScoringFunction;
+  private defaultWeight: number;
+
+  /**
+   * @param appraisals initial appraisals - usually static and will always be checked
+   * @param defaultScoringFunction the default scoring function that will be used if none is provided
+   */
+  constructor(appraisals?: IAppraisal<TContext>[], defaultScoringFunction?: ScoringFunction) {
+    if (appraisals) this.appraisals = appraisals;
+
+    this.defaultScoringFunction = defaultScoringFunction ?? ((scores: number[]) =>
+      scores.reduce((prev, curr) => prev += curr, 0) / scores.length);
+
+    this.defaultWeight = 1;
   }
 
-  getScore(context: TContext) {
-    if (!this.appraisals || this.appraisals?.length === 0) return 0;
-
-    let totalScore = 0;
-    this.appraisals?.forEach(appraisal => {
-      const score = appraisal.getScore(context);
-      totalScore += score;
-    })
-
-    return totalScore / this.appraisals.length;
+  /**
+   * Add a consideration to the reasoner
+   */
+  addAppraisal(appraisal: IAppraisal<TContext>): void {
+    this.appraisals.push(appraisal);
   }
-}
-
-/**
- * Score child appraisals until child scores below threshold
- */
-class ThresholdConsideration<TContext, TPersonality> implements Consideration<TContext> {
-  threshold: number;
-  action?: Action<TContext>;
-  appraisals?: Appraisal<TContext>[];
-
-  constructor(threshold: number, action: Action<TContext>, appraisals: Appraisal<TContext>[]) {
-    this.action = action;
-    this.appraisals = appraisals;
-    this.threshold = threshold;
+  
+  /**
+   * Remove a consideration to the reasoner
+   */
+  removeAppraisalById(id: string) {
+    this.appraisals = this.appraisals.filter(
+      consideration => consideration.id === id
+    );
   }
 
-  getScore = (context: TContext) => {
-    let sum = 0;
-    this.appraisals?.forEach(appraisal => {
-      const score = appraisal.getScore(context);
+  /**
+   * Remove all considerations of a specific action type
+   */
+  removeAppraisalsByActionType(actionType: string) {
+    this.appraisals = this.appraisals.filter(consideration => consideration.action.type !== actionType);
+  }
 
-      if (score < this.threshold) return sum;
+  /**
+   * Lock decisions for a specified duration (in seconds)
+   */
+  private lockDecision(duration: number) {
+    this.decisionLock.isLocked = true;
+    this.decisionLock.unlockTime = Date.now() + duration * 1000;
+  }
 
-      sum += score;
-    })
+  /**
+   * Check if the decision lock is active
+   */
+  private isDecisionLocked(): boolean {
+    if (this.decisionLock.isLocked && Date.now() < this.decisionLock.unlockTime) {
+      return true;
+    }
 
-    return sum;
-  } 
-}
+    this.decisionLock.isLocked = false;
+    return false;
+  }
 
-/**
- * APPRAISALS
- * * the calculated Utility
- * * * https://www.desmos.com/calculator
- */
-interface Appraisal<TContext> {
-  weight: number
-  getScore: (context: TContext) => number;
-}
+  /**
+   * @param context The context used by appraisals
+   * @param dynamicAppraisals Optional additional appraisals
+   * @returns 
+   */
+  getBestAction(
+    context: TContext,
+    dynamicAppraisals: IAppraisal<TContext>[] = []
+  ): { type: string; parameters?: Record<string, any> } | null {
+    if (this.isDecisionLocked()) {
+      return this.lastAction;
+    }
 
-/**
- * ACTIONS
- */
-interface Action<TContext> {
-  name: string;
-  execute: (context?: TContext) => void;
-}
+    let bestAction: { type: string; parameters?: Record<string, any> } | null = null;
+    let bestScore = -Infinity;
 
-/**
- * AGENT
- * * context
- * * personality
- * * currentAction
- */
-interface Agent<TContext> {
-  name: string;
-  currentAction: string | null;
-  context: TContext
-}
+    const allAppraisals = [...this.appraisals, ...dynamicAppraisals];
 
-type ContextualUnitData = {
-  distance: number,
-  health: number,
-  power: number
-}
+    for (const appraisal of allAppraisals) {
+      const score = this.evaluateAppraisal(appraisal, context);
 
-// implement game state / context
-type Context = {
-  health: number,
-  attackRange: number,
-  moveSpeed: number,
-  allies: ContextualUnitData[],
-  enemies: ContextualUnitData[],
-}
+      if (score > bestScore) {
+        bestScore = score;
+        bestAction = appraisal.action;
+      }
+    }
 
+    // TODO: this only locks when an action is chosen twice in a row
+    if (bestAction && bestAction === this.lastAction) {
+      this.lockDecision(0.3);
+      return bestAction;
+    }
 
-// build actions
+    if (bestAction) {
+      this.lastAction = bestAction;
+      return bestAction;
+    }
 
-class FleeAction implements Action<Context> {
-  name = "Flee";
+    return null;
+  }
 
-  execute(context?: Context): void {
-    // fleeing
+  private evaluateAppraisal(
+    appraisal: IAppraisal<TContext>,
+    context: TContext
+  ): number {
+    const scores = appraisal.considerations.map(({ consideration, params }) =>
+      consideration.evaluate(context, params)
+    );
+
+    const scoringFunction = appraisal.scoringFunction ?? this.defaultScoringFunction;
+    const weight = appraisal.weight ?? this.defaultWeight;
+
+    const totalScore = scoringFunction(scores);
+    return totalScore * weight;
   }
 }
-
-/**
- * appraisal should have a weight, getScore, and 
- */
-
-const enemiesNearby = () => {
-  /** calculate value of avoiding enemies */
-  // define what AI considers "close"
-  // get the number of enemies within "close" range and LoS
-  // return number based on "fearfulness"
-}
-
-const healthRemaining = () => {
-  // define the flee threshold
-  // get the remaining health (percentage)
-  // return calculation of remaining health * flee threshold
-}
-
-const alliesNearby = () => {
-  /** calculate value of retreating to allies */
-  // check for a "cluster" of allies within "range"
-  // 
-}
-
-class EatAction implements Action<Context> {
-  name = "Eat";
-
-  execute(context?: Context): void {
-    // eating 
-  }
-}
-
-class DrinkAction implements Action<Context> {
-  name = "Drink";
-
-  execute(context?: Context): void {
-    // drinking 
-  }
-}
-
-// build appraisals
-
-// place action / appraisal combinations into considerations
-
-// place considerations into reasoner
