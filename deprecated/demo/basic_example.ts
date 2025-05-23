@@ -1,5 +1,8 @@
 import { createBarUI } from "./components/Bar";
 import "./style.css";
+/**
+ * This was the first draft of utilitai and is used for the first visual demo. It will be deleted eventually.
+ */
 
 interface Action<TContext> {
   name: string;

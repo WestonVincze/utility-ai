@@ -1,4 +1,8 @@
-import type { AppraisalFunction, CurveFunction, Appraisal, Action, ScoringFunction, Consideration, Reasoner, Context } from "../src/types";
+import type { AppraisalFunction, CurveFunction, Appraisal, Action, ScoringFunction, Consideration, Reasoner, Context } from "../types";
+
+/**
+ * This was a PoC for utility theory as a factory function and contains some of the early ideas. It will eventually be removed.
+ */
 
 enum ActionName {
   Idle,

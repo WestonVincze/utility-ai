@@ -1,6 +1,6 @@
 # NOTES
 
-A collection of notes taken while learning about Utility theory for Game AI
+This is a collection of notes I took while learning about Utility theory for Game AI. I have left them unedited, so they may not be useful, but the resources I used were integral to the creation of this library.
 
 ## Resources
 http://www.gameaipro.com/GameAIPro/GameAIPro_Chapter09_An_Introduction_to_Utility_Theory.pdf
@@ -295,6 +295,4 @@ Logit: `U(w) = (Math.log * Math.E * (w / 1 - w) + 5) / 10`
                         \                          /
                          \                        /
                                 [threat ratio]
-
-
  
