@@ -1,3 +1,7 @@
+import { getRandomAction } from "./utils";
+
+export type Action = { type: string; params?: Record<string, any> };
+
 export type IContext = Record<string, any>;
 
 export type ScoringFunction = (score: number[]) => number;
@@ -7,11 +11,12 @@ export type CurveFunction = (score: number) => number;
 export interface IConsideration<TContext, TParams = undefined> {
   evaluate: (context: TContext, params?: TParams) => number;
   curveFunction?: CurveFunction;
+  weight?: number;
 } 
 
 export interface IAppraisal<TContext> {
   id: string;
-  action: { type: string; params?: Record<string, any> };
+  action: Action;
   considerations: {
     consideration: IConsideration<TContext, any>,
     params?: any
@@ -25,7 +30,7 @@ export interface IAppraisal<TContext> {
  */
 export class Reasoner<TContext extends IContext> {
   private appraisals: IAppraisal<TContext>[] = [];
-  private lastAction: { type: string; parameters?: Record<string, any> } | null = null;
+  private lastAction: Action | null = null;
   private decisionLock: { isLocked: boolean; unlockTime: number } = { isLocked: false, unlockTime: 0 };
 
   private defaultScoringFunction: ScoringFunction;
@@ -100,18 +105,26 @@ export class Reasoner<TContext extends IContext> {
       return this.lastAction;
     }
 
-    let bestAction: { type: string; parameters?: Record<string, any> } | null = null;
     let bestScore = -Infinity;
+    let bestAction: Action | null = null;
+    let tiedActions : Action[] = []
 
     const allAppraisals = [...this.appraisals, ...dynamicAppraisals];
 
     for (const appraisal of allAppraisals) {
       const score = this.evaluateAppraisal(appraisal, context);
 
-      if (score > bestScore) {
+      if (score === bestScore && bestAction) {
+        tiedActions.push(appraisal.action);
+      } else if (score > bestScore) {
         bestScore = score;
         bestAction = appraisal.action;
+        tiedActions = [bestAction];
       }
+    }
+
+    if (tiedActions.length > 1) {
+      bestAction = getRandomAction(tiedActions);
     }
 
     // TODO: this only locks when an action is chosen twice in a row
@@ -133,7 +146,7 @@ export class Reasoner<TContext extends IContext> {
     context: TContext
   ): number {
     const scores = appraisal.considerations.map(({ consideration, params }) =>
-      consideration.evaluate(context, params)
+      consideration.evaluate(context, params) * (consideration.weight ?? 1)
     );
 
     const scoringFunction = appraisal.scoringFunction ?? this.defaultScoringFunction;

@@ -1,5 +1,6 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { Reasoner, IAppraisal, IConsideration, IContext } from "./main";
+import * as utils from "./utils";
 
 // Mock context
 interface ExampleContext extends IContext {
@@ -60,6 +61,45 @@ describe("Reasoner", () => {
 
     // "energy" is closer to 0 than hunger is to 100, so the action should be "Rest"
     expect(bestAction).toEqual({ type: "Rest" })
+  });
+
+  it("should factor in the weight of an appraisal", () => {
+    const context: ExampleContext = { hunger: 50, energy: 50 };
+    const reasoner = new Reasoner<ExampleContext>();
+
+    hungerAppraisal.weight = 0.5;
+    energyAppraisal.weight = 1;
+
+    reasoner.addAppraisal(hungerAppraisal);
+    reasoner.addAppraisal(energyAppraisal);
+
+    let bestAction = reasoner.getBestAction(context);
+    expect(bestAction).toEqual({ type: "Rest" })
+
+    hungerAppraisal.weight = 1;
+    energyAppraisal.weight = 0.5;
+
+    bestAction = reasoner.getBestAction(context);
+    expect(bestAction).toEqual({ type: "Eat" })
+
+    hungerAppraisal.weight = 1;
+    energyAppraisal.weight = 1;
+  });
+
+  it("should choose an action randomly if multiple appraisals return the same score", () => {
+    //const randomizeActionSpy = vi.fn(getRandomAction)
+    const randomizeActionSpy = vi.spyOn(utils, "getRandomAction");
+
+    const context: ExampleContext = { hunger: 50, energy: 50 };
+    const reasoner = new Reasoner<ExampleContext>();
+
+    reasoner.addAppraisal(hungerAppraisal);
+    reasoner.addAppraisal(energyAppraisal);
+
+    reasoner.getBestAction(context);
+
+    expect(randomizeActionSpy).toHaveBeenCalled();
+    randomizeActionSpy.mockRestore();
   });
 
 
